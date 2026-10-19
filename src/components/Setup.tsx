@@ -50,19 +50,19 @@ export default function Setup({ onDone }: { onDone: (f: Family) => void }) {
   }
 
   return (
-    <div className="paper-grain min-h-full">
-      <div className="mx-auto grid max-w-5xl gap-10 px-5 py-10 md:grid-cols-[1fr_420px] md:items-center md:gap-16 md:py-20">
-        <section>
+    <div className="paper-grain flex min-h-full items-center justify-center pb-24">
+      <div className="grid w-full max-w-5xl justify-items-center gap-10 px-5 py-10 md:grid-cols-[1fr_420px] md:items-center md:gap-16 md:py-16">
+        <section className="text-center">
           <h1 className="text-[15px] font-bold text-ink">우리 호칭</h1>
           <div className="mt-8">
             <Rotating />
           </div>
-          <p className="mt-6 max-w-md text-[17px] leading-relaxed text-muted">
+          <p className="mx-auto mt-6 max-w-md text-[17px] leading-relaxed text-muted">
             양가 가족을 등록하면 한 장의 가계도로 이어 드려요. 누구를 누르든 그 사람 입장에서 모두를 뭐라고 부르는지 바로 보여요.
           </p>
         </section>
 
-        <form onSubmit={submit} className="space-y-6 rounded-[26px] bg-card p-6 shadow-[0_20px_50px_-30px_rgb(31_36_51/0.4)] md:p-8">
+        <form onSubmit={submit} className="w-full max-w-[420px] space-y-6 rounded-[26px] bg-card p-6 shadow-[0_20px_50px_-30px_rgb(31_36_51/0.4)] md:p-8">
           <fieldset className="space-y-4">
             <legend className="mb-1 flex items-center gap-2 text-lg font-bold">
               <span className="h-3 w-3 rounded-full bg-cheong" /> 나
@@ -118,7 +118,7 @@ export default function Setup({ onDone }: { onDone: (f: Family) => void }) {
           </div>
         </form>
       </div>
-      <footer className="mx-auto flex max-w-5xl flex-wrap gap-x-5 gap-y-1 px-5 pb-8 text-sm text-muted">
+      <footer className="fixed inset-x-0 bottom-0 z-10 flex flex-wrap justify-center gap-x-3 gap-y-1 bg-paper/85 px-4 pt-3 pb-[max(14px,env(safe-area-inset-bottom))] text-[13px] text-muted backdrop-blur sm:gap-x-5 sm:text-sm">
         <span>
           만든 사람{' '}
           <a className="font-semibold text-ink underline-offset-2 hover:underline" href={DEVELOPER.github} target="_blank" rel="noreferrer">
