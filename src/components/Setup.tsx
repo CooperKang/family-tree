@@ -50,7 +50,7 @@ export default function Setup({ onDone }: { onDone: (f: Family) => void }) {
   }
 
   return (
-    <div className="paper-grain flex min-h-full items-center justify-center pb-24">
+    <div className="paper-grain flex min-h-full items-center justify-center py-14">
       <div className="grid w-full max-w-5xl justify-items-center gap-10 px-5 py-10 md:grid-cols-[1fr_420px] md:items-center md:gap-16 md:py-16">
         <section className="text-center">
           <h1 className="text-[15px] font-bold text-ink">우리 호칭</h1>
