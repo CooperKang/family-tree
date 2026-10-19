@@ -25,8 +25,11 @@ function Menu({ fam, onReplace }: { fam: Family; onReplace: (f: Family | null) =
     const a = document.createElement('a')
     a.href = URL.createObjectURL(blob)
     a.download = '우리-호칭-가계도.json'
+    // Firefox는 문서에 붙은 링크만, Safari는 다운로드가 시작된 뒤에 URL을 해제해야 내려받는다
+    document.body.append(a)
     a.click()
-    URL.revokeObjectURL(a.href)
+    a.remove()
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000)
     setOpen(false)
   }
   const importJson = async (f: File) => {
@@ -152,7 +155,8 @@ export default function App() {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="relative z-20 flex items-center gap-3 px-4 pt-[max(12px,env(safe-area-inset-top))] pb-2 md:px-6">
+      {/* 메뉴가 아래 "누구 입장에서?" 줄 위로 펼쳐지므로 그 줄(z-20)보다 위에 둔다 */}
+      <header className="relative z-30 flex items-center gap-3 px-4 pt-[max(12px,env(safe-area-inset-top))] pb-2 md:px-6">
         <h1 className="font-term hidden text-xl font-bold sm:block">우리 호칭</h1>
         <div className="sm:ml-auto md:ml-6">
           <Segmented
