@@ -1,0 +1,39 @@
+{
+  "name": "hoching",
+  "private": true,
+  "version": "1.0.0",
+  "description": "양가 가계도를 만들고 누구 입장에서든 호칭을 알려주는 웹앱",
+  "author": "JaeHa Kang (https://github.com/CooperKang)",
+  "license": "MIT",
+  "homepage": "https://cooperkang.github.io/family-tree/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/CooperKang/family-tree.git"
+  },
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "oxlint",
+    "test": "vitest run",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "motion": "^14.3.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-zoom-pan-pinch": "^4.2.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitejs/plugin-react": "^6.1.1",
+    "oxlint": "^1.81.0",
+    "tailwindcss": "^4.3.3",
+    "typescript": "~6.0.2",
+    "vite": "^8.3.0",
+    "vitest": "^5.0.5"
+  }
+}
