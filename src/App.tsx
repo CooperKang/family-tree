@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import Chart from './components/Chart'
 import { ImportForm, InAppSave } from './components/DataSheet'
 import { AddForm, EditForm } from './components/PersonForms'
@@ -21,56 +22,87 @@ type Panel = { t: 'rel' } | { t: 'add'; anchor: string; kind?: AddKind } | { t: 
 function Menu({ onSave, onImport, onReplace }: { onSave: () => void; onImport: () => void; onReplace: (f: Family | null) => void }) {
   const [open, setOpen] = useState(false)
   const [confirmReset, setConfirmReset] = useState(false)
-  const run = (fn: () => void) => () => {
+  const [pos, setPos] = useState({ top: 0, right: 0 })
+  const btn = useRef<HTMLButtonElement>(null)
+  const close = () => {
     setOpen(false)
+    setConfirmReset(false)
+  }
+  const run = (fn: () => void) => () => {
+    close()
     fn()
   }
+  // 패널은 body에 그려서 페이지의 어떤 층(z-index)에도 가리지 않게 하고, 위치는 버튼에 맞춘다
+  useLayoutEffect(() => {
+    if (!open) return
+    const place = () => {
+      const r = btn.current?.getBoundingClientRect()
+      if (r) setPos({ top: r.bottom + 8, right: window.innerWidth - r.right })
+    }
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close()
+    place()
+    window.addEventListener('resize', place)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('resize', place)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [open])
   const item = 'block w-full rounded-xl px-3 py-2.5 text-left text-[15px] font-semibold hover:bg-paper'
   return (
-    <div className="relative">
-      <button type="button" aria-label="메뉴" aria-expanded={open} onClick={() => setOpen(!open)} className="grid h-10 w-10 place-items-center rounded-xl text-xl hover:bg-card">
+    <>
+      <button ref={btn} type="button" aria-label="메뉴" aria-expanded={open} onClick={() => (open ? close() : setOpen(true))} className="grid h-10 w-10 place-items-center rounded-xl text-xl hover:bg-card">
         ⋯
       </button>
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: -4 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: -4 }}
-            className="absolute right-0 z-50 mt-2 w-56 origin-top-right rounded-2xl bg-card p-1.5 shadow-[0_20px_40px_-15px_rgb(31_36_51/0.35)]"
-          >
-            <button className={item} onClick={run(onSave)}>
-              파일로 저장하기
-            </button>
-            <button className={item} onClick={run(onImport)}>
-              불러오기
-            </button>
-            <a className={item} href={HUB_URL}>
-              다른 서비스 보기
-            </a>
-            <a className={item} href={DEVELOPER.repo} target="_blank" rel="noreferrer">
-              소스 코드 (GitHub)
-            </a>
-            <p className="px-3 pt-1 pb-2 text-xs text-muted">
-              만든 사람{' '}
-              <a className="font-semibold underline-offset-2 hover:underline" href={DEVELOPER.github} target="_blank" rel="noreferrer">
-                {DEVELOPER.name}
-              </a>
-            </p>
-            <div className="mx-2 my-1 border-t border-line/60" />
-            {confirmReset ? (
-              <button className={`${item} text-hong`} onClick={() => onReplace(null)}>
-                정말 모두 지울까요? 한 번 더 누르세요
-              </button>
-            ) : (
-              <button className={`${item} text-hong`} onClick={() => setConfirmReset(true)}>
-                처음부터 다시 만들기
-              </button>
+      {createPortal(
+        <>
+          {/* 바깥을 누르면 닫힌다. 닫히는 애니메이션 동안 다음 터치를 막지 않도록 바로 없앤다 */}
+          {open && <div className="fixed inset-0 z-[60]" onClick={close} />}
+          <AnimatePresence>
+            {open && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: -4 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: -4, pointerEvents: 'none' }}
+                transition={{ duration: 0.15 }}
+                style={{ top: pos.top, right: pos.right }}
+                className="fixed z-[61] w-56 origin-top-right rounded-2xl bg-card p-1.5 shadow-[0_20px_40px_-15px_rgb(31_36_51/0.35)]"
+              >
+                <button className={item} onClick={run(onSave)}>
+                  파일로 저장하기
+                </button>
+                <button className={item} onClick={run(onImport)}>
+                  불러오기
+                </button>
+                <a className={item} href={HUB_URL}>
+                  다른 서비스 보기
+                </a>
+                <a className={item} href={DEVELOPER.repo} target="_blank" rel="noreferrer">
+                  소스 코드 (GitHub)
+                </a>
+                <p className="px-3 pt-1 pb-2 text-xs text-muted">
+                  만든 사람{' '}
+                  <a className="font-semibold underline-offset-2 hover:underline" href={DEVELOPER.github} target="_blank" rel="noreferrer">
+                    {DEVELOPER.name}
+                  </a>
+                </p>
+                <div className="mx-2 my-1 border-t border-line/60" />
+                {confirmReset ? (
+                  <button className={`${item} text-hong`} onClick={() => onReplace(null)}>
+                    정말 모두 지울까요? 한 번 더 누르세요
+                  </button>
+                ) : (
+                  <button className={`${item} text-hong`} onClick={() => setConfirmReset(true)}>
+                    처음부터 다시 만들기
+                  </button>
+                )}
+              </motion.div>
             )}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+          </AnimatePresence>
+        </>,
+        document.body,
+      )}
+    </>
   )
 }
 
