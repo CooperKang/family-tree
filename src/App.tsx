@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Chart from './components/Chart'
+import { ImportForm, InAppSave } from './components/DataSheet'
 import { AddForm, EditForm } from './components/PersonForms'
 import Register from './components/Register'
 import RelationPanel from './components/RelationPanel'
@@ -8,39 +9,21 @@ import Setup from './components/Setup'
 import TreeView from './components/TreeView'
 import { Segmented, Sheet } from './components/ui'
 import { DEVELOPER, HUB_URL } from './about'
+import { inAppBrowser, saveFamily } from './familyFile'
 import { childrenOf } from './kin/graph'
 import type { AddKind } from './kin/ops'
 import type { Family, Gender } from './kin/types'
 import { displayName, PREVIEW_BABY_ID, useFamily, useSides, withPreviewBaby } from './store'
 
 type Tab = 'tree' | 'chart' | 'people'
-type Panel = { t: 'rel' } | { t: 'add'; anchor: string; kind?: AddKind } | { t: 'edit'; id: string } | null
+type Panel = { t: 'rel' } | { t: 'add'; anchor: string; kind?: AddKind } | { t: 'edit'; id: string } | { t: 'inapp'; app: string } | { t: 'import' } | null
 
-function Menu({ fam, onReplace }: { fam: Family; onReplace: (f: Family | null) => void }) {
+function Menu({ onSave, onImport, onReplace }: { onSave: () => void; onImport: () => void; onReplace: (f: Family | null) => void }) {
   const [open, setOpen] = useState(false)
   const [confirmReset, setConfirmReset] = useState(false)
-  const file = useRef<HTMLInputElement>(null)
-  const exportJson = () => {
-    const blob = new Blob([JSON.stringify(fam, null, 2)], { type: 'application/json' })
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(blob)
-    a.download = '우리-호칭-가계도.json'
-    // Firefox는 문서에 붙은 링크만, Safari는 다운로드가 시작된 뒤에 URL을 해제해야 내려받는다
-    document.body.append(a)
-    a.click()
-    a.remove()
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000)
+  const run = (fn: () => void) => () => {
     setOpen(false)
-  }
-  const importJson = async (f: File) => {
-    try {
-      const data = JSON.parse(await f.text()) as Family
-      if (!data.meId || !data.people?.[data.meId]) throw new Error()
-      onReplace(data)
-    } catch {
-      alert('우리 호칭에서 내보낸 파일이 아니에요. 파일을 다시 확인해 주세요.')
-    }
-    setOpen(false)
+    fn()
   }
   const item = 'block w-full rounded-xl px-3 py-2.5 text-left text-[15px] font-semibold hover:bg-paper'
   return (
@@ -48,7 +31,6 @@ function Menu({ fam, onReplace }: { fam: Family; onReplace: (f: Family | null) =
       <button type="button" aria-label="메뉴" aria-expanded={open} onClick={() => setOpen(!open)} className="grid h-10 w-10 place-items-center rounded-xl text-xl hover:bg-card">
         ⋯
       </button>
-      <input ref={file} type="file" accept="application/json" hidden onChange={(e) => e.target.files?.[0] && importJson(e.target.files[0])} />
       <AnimatePresence>
         {open && (
           <motion.div
@@ -57,11 +39,11 @@ function Menu({ fam, onReplace }: { fam: Family; onReplace: (f: Family | null) =
             exit={{ opacity: 0, scale: 0.95, y: -4 }}
             className="absolute right-0 z-50 mt-2 w-56 origin-top-right rounded-2xl bg-card p-1.5 shadow-[0_20px_40px_-15px_rgb(31_36_51/0.35)]"
           >
-            <button className={item} onClick={exportJson}>
+            <button className={item} onClick={run(onSave)}>
               파일로 저장하기
             </button>
-            <button className={item} onClick={() => file.current?.click()}>
-              파일 불러오기
+            <button className={item} onClick={run(onImport)}>
+              불러오기
             </button>
             <a className={item} href={HUB_URL}>
               다른 서비스 보기
@@ -99,6 +81,12 @@ export default function App() {
   const [targetId, setTargetId] = useState<string | null>(null)
   const [panel, setPanel] = useState<Panel>(null)
   const [babyGender, setBabyGender] = useState<Gender | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+  useEffect(() => {
+    if (!notice) return
+    const t = setTimeout(() => setNotice(null), 4500)
+    return () => clearTimeout(t)
+  }, [notice])
 
   const realKids = stored ? childrenOf(stored, stored.people[stored.meId]) : []
   const previewing = !!stored && !!babyGender && realKids.length === 0
@@ -150,6 +138,19 @@ export default function App() {
     setPanel(null)
   }
 
+  const save = async () => {
+    const r = await saveFamily(stored)
+    if (r === 'shared') setNotice('가계도 파일을 저장했어요.')
+    if (r === 'downloaded') setNotice('가계도 파일을 내려받았어요. 다운로드 폴더(아이폰은 파일 앱)에서 확인하세요.')
+  }
+  const startSave = () => {
+    const app = inAppBrowser()
+    if (app) {
+      setTargetId(null)
+      setPanel({ t: 'inapp', app })
+    } else void save()
+  }
+
   const quickViewers = [me, ...(spouse ? [spouse] : []), ...realKids]
   const otherViewer = !quickViewers.some((p) => p.id === viewer) && viewer !== PREVIEW_BABY_ID ? fam.people[viewer] : null
 
@@ -176,7 +177,11 @@ export default function App() {
         </div>
         <div className="ml-auto">
           <Menu
-            fam={stored}
+            onSave={startSave}
+            onImport={() => {
+              setTargetId(null)
+              setPanel({ t: 'import' })
+            }}
             onReplace={(f) => {
               setStored(f)
               setViewerId(null)
@@ -262,7 +267,41 @@ export default function App() {
         )}
         {panel?.t === 'add' && stored.people[panel.anchor] && <AddForm key={panel.anchor + panel.kind} fam={stored} anchorId={panel.anchor} initialKind={panel.kind} onDone={commit} />}
         {panel?.t === 'edit' && stored.people[panel.id] && <EditForm key={panel.id} fam={stored} id={panel.id} onDone={commit} />}
+        {panel?.t === 'inapp' && (
+          <InAppSave
+            fam={stored}
+            app={panel.app}
+            onTrySave={() => void save()}
+            onDone={setNotice}
+          />
+        )}
+        {panel?.t === 'import' && (
+          <ImportForm
+            onCancel={closePanel}
+            onLoad={(f) => {
+              setStored(f)
+              setViewerId(null)
+              closePanel()
+              setNotice(`${displayName(f, f.people[f.meId])}님의 가계도를 불러왔어요.`)
+            }}
+          />
+        )}
       </Sheet>
+
+      <AnimatePresence>
+        {notice && (
+          <motion.div
+            role="status"
+            initial={{ opacity: 0, y: -16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -16 }}
+            className="fixed inset-x-4 top-[max(16px,env(safe-area-inset-top))] z-50 mx-auto max-w-md rounded-2xl bg-ink px-4 py-3 text-[15px] font-semibold text-white shadow-lg"
+            onClick={() => setNotice(null)}
+          >
+            {notice}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
